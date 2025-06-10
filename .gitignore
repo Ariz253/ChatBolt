@@ -1,0 +1,5 @@
+# .gitignore (at project root)
+.expo/
+node_modules/
+.env
+*.log
