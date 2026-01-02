@@ -34,6 +34,12 @@ function App() {
         return;
       }
 
+      const roomNum = parseInt(room.trim(), 10);
+      if (isNaN(roomNum) || roomNum < 1 || roomNum > 500) {
+        alert("Room number must be between 1 and 500.");
+        return;
+      }
+
       socket.emit("join_room", { room: room.trim(), username: username.trim() });
 
       socket.on("update_user_list", () => {
@@ -52,11 +58,11 @@ function App() {
 
   return (
     <div className="App">
-      {!showChat ?( 
+  {!showChat ?( 
       <div className="joinChatContainer">
       <h3>ChatBolt</h3>
       <input type="text" placeholder="Username" value={username} onChange={(e) => {setUsername(e.target.value);}} />
-      <input type="text" placeholder="Room" value={room} onChange={(e) => {setRoom(e.target.value);}} />
+  <input type="text" placeholder="Room (1-500)" value={room} onChange={(e) => {setRoom(e.target.value);}} />
       <button onClick={joinRoom}>Join a Room</button>
       </div>
       )
