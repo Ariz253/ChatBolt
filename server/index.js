@@ -8,6 +8,7 @@ app.use(cors());
 const server = http.createServer(app);
 
 const users = {}; // Stores users in each room
+const rooms = {}; // Stores room metadata: { title, adminId }
 
 
 const io = new Server(server, {
@@ -21,39 +22,35 @@ io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
   const updateUserList = (room) => {
-    io.to(room).emit("update_users", users[room]); // Send updated user list
+  io.to(room).emit("update_user_list", users[room]); // Send updated user list
   };
 
 
   socket.on("join_room", (data) => {
-    // Validate room id: must be integer between 1 and 500
-    const roomId = parseInt(data.room, 10);
-    if (Number.isNaN(roomId) || roomId < 1 || roomId > 500) {
+    // Require that the room exists (created via create_room)
+      if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
+        socket.emit("join_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
       socket.emit("join_error", { message: "Invalid room. Room must be an integer between 1 and 500." });
+      return;
+    }
+
+    if (!rooms[roomId]) {
+      socket.emit("join_error", { message: "Room does not exist. Please create the room first." });
       return;
     }
 
     const trimmedUsername = data.username.trim();
     const normalizedUsername = trimmedUsername.toLowerCase();
 
-    // If the room doesn't exist, ensure we don't create more than 500 rooms
-    const existingRoomCount = Object.keys(users).length;
-    if (!users[roomId]) {
-      if (existingRoomCount >= 500) {
-        socket.emit("join_error", { message: "Room limit reached. Cannot create new rooms right now." });
-        return;
-      }
-      users[roomId] = [];
-    }
-
     // Check if username already exists in the room
+    if (!users[roomId]) users[roomId] = [];
     if (users[roomId].some((user) => user.username.toLowerCase() === normalizedUsername)) {
       socket.emit("join_error", { message: "Username already exists in the room." });
       return;
     }
 
-    // Enforce max participants per room (100)
-    if (users[roomId].length >= 100) {
+      if (users[roomId].length >= 25) {
+        socket.emit("join_error", { message: "Room is full (max 25 participants)." });
       socket.emit("join_error", { message: "Room is full (max 100 participants)." });
       return;
     }
@@ -71,36 +68,169 @@ io.on("connection", (socket) => {
       time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
     });
 
-    // Send the updated user list to all clients in the room
-    io.to(roomId).emit("update_user_list", users[roomId]);
+    // Send the updated user list to all clients in the room (include isAdmin flag)
+    const annotatedUsers = users[roomId].map((u) => ({
+      id: u.id,
+      username: u.username,
+      isAdmin: rooms[roomId].adminId === u.id,
+    }));
+    io.to(roomId).emit("update_user_list", annotatedUsers);
 
     // Send the current user list to the newly joined user
-    socket.emit("update_user_list", users[roomId]);
+    socket.emit("update_user_list", annotatedUsers);
+  });
+
+  // Create room handler
+  socket.on("create_room", (data) => {
+    const roomId = parseInt(data.room, 10);
+    const title = (data.title || "").toString().trim();
+    const trimmedUsername = (data.username || "").toString().trim();
+      if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
+        socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
+      socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 500." });
+      return;
+    }
+
+    if (rooms[roomId]) {
+      socket.emit("create_error", { message: "Room already exists." });
+      return;
+    }
+
+      if (existingRoomCount >= 50) {
+        socket.emit("create_error", { message: "Room limit reached. Cannot create new rooms right now." });
+      socket.emit("create_error", { message: "Room limit reached. Cannot create new rooms right now." });
+      return;
+    }
+
+    // create room and make this socket the admin
+    rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id };
+    users[roomId] = [];
+
+    // auto-join creator if username provided
+    if (trimmedUsername) {
+      users[roomId].push({ id: socket.id, username: trimmedUsername });
+      socket.join(roomId);
+    }
+
+    socket.emit("room_created", { room: roomId, title: rooms[roomId].title });
+
+    // send updated user list (creator only so far)
+    const annotatedUsers = users[roomId].map((u) => ({
+      id: u.id,
+      username: u.username,
+      isAdmin: rooms[roomId].adminId === u.id,
+    }));
+    io.to(roomId).emit("update_user_list", annotatedUsers);
+  });
+
+  // Admin actions: remove user, make admin, end room
+  socket.on("remove_user", (data) => {
+    const roomId = parseInt(data.room, 10);
+    const targetId = data.targetId;
+    if (!rooms[roomId]) return;
+    if (rooms[roomId].adminId !== socket.id) return; // only admin
+
+    const idx = users[roomId].findIndex((u) => u.id === targetId);
+    if (idx === -1) return;
+    const removed = users[roomId].splice(idx, 1)[0];
+
+    io.to(targetId).emit("kicked", { room: roomId, reason: "Removed by admin" });
+    io.to(roomId).emit("receive_message", {
+      author: "System",
+      message: `${removed.username} was removed by the admin.`,
+      time: new Date().getHours() + ":" + new Date().getMinutes(),
+    });
+
+    const annotatedUsers2 = users[roomId].map((u) => ({ id: u.id, username: u.username, isAdmin: rooms[roomId].adminId === u.id }));
+    io.to(roomId).emit("update_user_list", annotatedUsers2);
+  });
+
+  socket.on("make_admin", (data) => {
+    const roomId = parseInt(data.room, 10);
+    const targetId = data.targetId;
+    if (!rooms[roomId]) return;
+    if (rooms[roomId].adminId !== socket.id) return; // only admin
+
+    // ensure target exists
+    const target = users[roomId].find((u) => u.id === targetId);
+    if (!target) return;
+
+    rooms[roomId].adminId = targetId;
+    io.to(roomId).emit("receive_message", {
+      author: "System",
+      message: `${target.username} is now the admin.`,
+      time: new Date().getHours() + ":" + new Date().getMinutes(),
+    });
+
+    const annotatedUsers3 = users[roomId].map((u) => ({ id: u.id, username: u.username, isAdmin: rooms[roomId].adminId === u.id }));
+    io.to(roomId).emit("update_user_list", annotatedUsers3);
+  });
+
+  socket.on("end_room", (data) => {
+    const roomId = parseInt(data.room, 10);
+    if (!rooms[roomId]) return;
+    if (rooms[roomId].adminId !== socket.id) return; // only admin
+
+    io.to(roomId).emit("room_ended", { room: roomId });
+    // cleanup
+    delete users[roomId];
+    delete rooms[roomId];
   });
 
 
 
 
   socket.on("send_message", (data) => {
-    socket.to(data.room).emit("receive_message", data);
+    // Normalize room id and broadcast to the room (including any sockets regardless of sender type)
+    const roomId = parseInt(data.room, 10);
+    if (!Number.isNaN(roomId) && rooms[roomId]) {
+      io.to(roomId).emit("receive_message", data);
+    }
   });
 
   socket.on("leave_room", (data) => {
     const { room, username } = data;
-    if (users[room]) {
-      const userIndex = users[room].findIndex((user) => user.id === socket.id);
+    const roomIdNum = parseInt(room, 10);
+    if (Number.isNaN(roomIdNum)) return;
+    if (users[roomIdNum]) {
+      const userIndex = users[roomIdNum].findIndex((user) => user.id === socket.id);
       if (userIndex !== -1) {
-        users[room].splice(userIndex, 1);
+        users[roomIdNum].splice(userIndex, 1);
+
+        // Ensure the socket leaves the room on server
+        try { socket.leave(roomIdNum); } catch (e) {}
 
         // Notify the room that the user has left
-        io.to(room).emit("receive_message", {
+        io.to(roomIdNum).emit("receive_message", {
           author: "System",
           message: `${username} has left the chat.`,
           time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
         });
 
-        // Send updated user list
-        io.to(room).emit("update_user_list", users[room]);
+        // If leaving user was admin, pick a new admin or cleanup
+        if (rooms[roomIdNum] && rooms[roomIdNum].adminId === socket.id) {
+          if (users[roomIdNum] && users[roomIdNum].length > 0) {
+            const randIndex = Math.floor(Math.random() * users[roomIdNum].length);
+            const newAdmin = users[roomIdNum][randIndex];
+            rooms[roomIdNum].adminId = newAdmin.id;
+            io.to(roomIdNum).emit("receive_message", {
+              author: "System",
+              message: `${newAdmin.username} has been assigned as the new admin.`,
+              time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
+            });
+          } else {
+            // no users left; cleanup room
+            delete users[roomIdNum];
+            delete rooms[roomIdNum];
+            return;
+          }
+        }
+
+        // Send updated annotated user list (with isAdmin flags)
+        if (users[roomIdNum]) {
+          const annotated = users[roomIdNum].map((u) => ({ id: u.id, username: u.username, isAdmin: rooms[roomIdNum] && rooms[roomIdNum].adminId === u.id }));
+          io.to(roomIdNum).emit("update_user_list", annotated);
+        }
       }
     }
   });
@@ -128,12 +258,84 @@ io.on("connection", (socket) => {
         message: `${username} has left the chat.`,
         time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
       });
-    
-      // Send updated user list
-      io.to(userRoom).emit("update_user_list", users[userRoom]);
+
+      // If disconnected user was admin, pick a random new admin
+      const roomIdNum = parseInt(userRoom, 10);
+      if (rooms[roomIdNum] && rooms[roomIdNum].adminId === socket.id) {
+        if (users[userRoom] && users[userRoom].length > 0) {
+          const randIndex = Math.floor(Math.random() * users[userRoom].length);
+          const newAdmin = users[userRoom][randIndex];
+          rooms[roomIdNum].adminId = newAdmin.id;
+          io.to(userRoom).emit("receive_message", {
+            author: "System",
+            message: `${newAdmin.username} has been assigned as the new admin.`,
+            time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
+          });
+        } else {
+          // no users left; cleanup room
+          delete users[userRoom];
+          delete rooms[roomIdNum];
+        }
+      }
+
+      // Send updated annotated user list (with isAdmin flags)
+      if (users[userRoom]) {
+        const annotated = users[userRoom].map((u) => ({ id: u.id, username: u.username, isAdmin: rooms[roomIdNum] && rooms[roomIdNum].adminId === u.id }));
+        io.to(userRoom).emit("update_user_list", annotated);
+      }
     }
   
     console.log("User Disconnected", socket.id);
+  });
+
+  // Handle disconnecting to propagate room changes immediately (useful for page refresh)
+  socket.on("disconnecting", () => {
+    // socket.rooms is a Set of rooms the socket is currently in (includes socket.id)
+    for (const roomName of socket.rooms) {
+      if (roomName === socket.id) continue; // skip personal room
+      const roomIdNum = parseInt(roomName, 10);
+      if (Number.isNaN(roomIdNum)) continue;
+
+      // remove user from users list for this room
+      if (users[roomIdNum]) {
+        const userIndex = users[roomIdNum].findIndex((u) => u.id === socket.id);
+        if (userIndex !== -1) {
+          const username = users[roomIdNum][userIndex].username;
+          users[roomIdNum].splice(userIndex, 1);
+
+          // Notify room
+          io.to(roomIdNum).emit("receive_message", {
+            author: "System",
+            message: `${username} has left the chat.`,
+            time: new Date().getHours() + ":" + new Date().getMinutes(),
+          });
+
+          // If disconnected user was admin, reassign or cleanup
+          if (rooms[roomIdNum] && rooms[roomIdNum].adminId === socket.id) {
+            if (users[roomIdNum] && users[roomIdNum].length > 0) {
+              const randIndex = Math.floor(Math.random() * users[roomIdNum].length);
+              const newAdmin = users[roomIdNum][randIndex];
+              rooms[roomIdNum].adminId = newAdmin.id;
+              io.to(roomIdNum).emit("receive_message", {
+                author: "System",
+                message: `${newAdmin.username} has been assigned as the new admin.`,
+                time: new Date().getHours() + ":" + new Date().getMinutes(),
+              });
+            } else {
+              delete users[roomIdNum];
+              delete rooms[roomIdNum];
+              continue;
+            }
+          }
+
+          // Emit annotated user list
+          if (users[roomIdNum]) {
+            const annotated = users[roomIdNum].map((u) => ({ id: u.id, username: u.username, isAdmin: rooms[roomIdNum] && rooms[roomIdNum].adminId === u.id }));
+            io.to(roomIdNum).emit("update_user_list", annotated);
+          }
+        }
+      }
+    }
   });
 
 });
