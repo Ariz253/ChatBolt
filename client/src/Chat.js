@@ -36,6 +36,14 @@ function Chat({ socket, username, room }) {
     };
   }, [socket]);
 
+  // Auto-scroll to bottom when a new message is added
+  const messagesEndRef = useRef(null);
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messageList]);
+
   return (
     <div className="chat-container">
       {/* Sidebar for Users */}
@@ -75,6 +83,8 @@ function Chat({ socket, username, room }) {
                 </div>
               );
             })}
+              {/* dummy element to scroll into view */}
+              <div ref={messagesEndRef} />
           </ScrollToBottom>
         </div>
         <div className="chat-footer">
