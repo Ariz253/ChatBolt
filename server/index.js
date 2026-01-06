@@ -28,9 +28,9 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", (data) => {
     // Require that the room exists (created via create_room)
-      if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
-        socket.emit("join_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
-      socket.emit("join_error", { message: "Invalid room. Room must be an integer between 1 and 500." });
+    const roomId = parseInt(data.room, 10);
+    if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
+      socket.emit("join_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
       return;
     }
 
@@ -85,9 +85,8 @@ io.on("connection", (socket) => {
     const roomId = parseInt(data.room, 10);
     const title = (data.title || "").toString().trim();
     const trimmedUsername = (data.username || "").toString().trim();
-      if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
-        socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
-      socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 500." });
+    if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
+      socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
       return;
     }
 
@@ -96,8 +95,8 @@ io.on("connection", (socket) => {
       return;
     }
 
-      if (existingRoomCount >= 50) {
-        socket.emit("create_error", { message: "Room limit reached. Cannot create new rooms right now." });
+    const existingRoomCount = Object.keys(rooms).length;
+    if (existingRoomCount >= 50) {
       socket.emit("create_error", { message: "Room limit reached. Cannot create new rooms right now." });
       return;
     }
