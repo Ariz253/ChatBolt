@@ -28,9 +28,9 @@ function App() {
       alert(data.message);
     };
     const handleRoomCreated = (data) => {
-      // if creator provided username, automatically join
+      // Use server-provided username if available (authoritative), else fall back to createUsername
       setRoom(String(data.room));
-      setUsername(createUsername || "");
+      setUsername((data && data.username) ? data.username : (createUsername || ""));
       setShowChat(true);
     };
 
@@ -43,32 +43,47 @@ function App() {
   socket.off("create_error", handleCreateError);
   socket.off("room_created", handleRoomCreated);
     };
-  }, []);
+  }, [createUsername]);
 
   const joinRoom = () => {
-    if (joinUsername.trim() !== "" && room.trim() !== "") {
-      // Validate that the room code is numeric
-      if (!/^\d+$/.test(room.trim())) {
-        alert("Room code must be a number.");
-        return;
-      }
-
-      const roomNum = parseInt(room.trim(), 10);
-      if (isNaN(roomNum) || roomNum < 1 || roomNum > 50) {
-        alert("Room number must be between 1 and 50.");
-        return;
-      }
-
-      socket.emit("join_room", { room: room.trim(), username: joinUsername.trim() });
-
-      socket.once("update_user_list", () => {
-        setUsername(joinUsername.trim());
-        setShowChat(true); // Proceed only if no error
-      });
+    const trimmedJoin = joinUsername.trim();
+    if (trimmedJoin === "") {
+      alert("Please enter a username before joining a room.");
+      return;
     }
+
+    if (room.trim() === "") {
+      alert("Please enter a room number.");
+      return;
+    }
+
+    // Validate that the room code is numeric
+    if (!/^\d+$/.test(room.trim())) {
+      alert("Room code must be a number.");
+      return;
+    }
+
+    const roomNum = parseInt(room.trim(), 10);
+    if (isNaN(roomNum) || roomNum < 1 || roomNum > 50) {
+      alert("Room number must be between 1 and 50.");
+      return;
+    }
+
+    socket.emit("join_room", { room: room.trim(), username: trimmedJoin });
+
+    socket.once("update_user_list", () => {
+      setUsername(trimmedJoin);
+      setShowChat(true); // Proceed only if no error
+    });
   }
 
   const createRoom = () => {
+    const trimmedCreate = createUsername.trim();
+    if (trimmedCreate === "") {
+      alert("Please enter a username before creating a room.");
+      return;
+    }
+
     if (!/^\d+$/.test(createRoomId.trim())) {
       alert("Room id must be a number.");
       return;
@@ -79,7 +94,7 @@ function App() {
       return;
     }
 
-  socket.emit("create_room", { room: roomNum, title: createTitle, username: createUsername.trim() });
+    socket.emit("create_room", { room: roomNum, title: createTitle, username: trimmedCreate });
   };
 
   const leaveRoom = () => {

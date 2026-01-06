@@ -102,16 +102,15 @@ io.on("connection", (socket) => {
     }
 
     // create room and make this socket the admin
-    rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id };
-    users[roomId] = [];
+  rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id };
+  users[roomId] = [];
 
-    // auto-join creator if username provided
-    if (trimmedUsername) {
-      users[roomId].push({ id: socket.id, username: trimmedUsername });
-      socket.join(roomId);
-    }
+  // assign a username for the creator (use provided or fallback to short id)
+  const assignedUsername = trimmedUsername || `User-${socket.id.slice(-4)}`;
+  users[roomId].push({ id: socket.id, username: assignedUsername });
+  socket.join(roomId);
 
-    socket.emit("room_created", { room: roomId, title: rooms[roomId].title });
+  socket.emit("room_created", { room: roomId, title: rooms[roomId].title, username: assignedUsername });
 
     // send updated user list (creator only so far)
     const annotatedUsers = users[roomId].map((u) => ({
