@@ -11,6 +11,8 @@ const users = {}; // Stores users in each room
 const rooms = {}; // Stores room metadata: { title, adminId }
 
 
+const admin = require("./firebaseAdmin");
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -18,11 +20,28 @@ const io = new Server(server, {
   },
 });
 
+// Authentication Middleware
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error("Authentication error: No token provided"));
+  }
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    socket.user = decodedToken; // Attach user data to socket
+    next();
+  } catch (err) {
+    console.error("Token verification failed:", err.message);
+    next(new Error("Authentication error: Invalid token"));
+  }
+});
+
 io.on("connection", (socket) => {
-  console.log(`User Connected: ${socket.id}`);
+  console.log(`User Connected: ${socket.id} (UID: ${socket.user.uid})`);
 
   const updateUserList = (room) => {
-  io.to(room).emit("update_user_list", users[room]); // Send updated user list
+    io.to(room).emit("update_user_list", users[room]); // Send updated user list
   };
 
 
@@ -39,6 +58,7 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Allow user to use the name they sent, but we trust the UID from the token
     const trimmedUsername = data.username.trim();
     const normalizedUsername = trimmedUsername.toLowerCase();
 
@@ -49,8 +69,8 @@ io.on("connection", (socket) => {
       return;
     }
 
-      if (users[roomId].length >= 25) {
-        socket.emit("join_error", { message: "Room is full (max 25 participants)." });
+    if (users[roomId].length >= 25) {
+      socket.emit("join_error", { message: "Room is full (max 25 participants)." });
       socket.emit("join_error", { message: "Room is full (max 100 participants)." });
       return;
     }
@@ -58,8 +78,8 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     console.log(`User with ID: ${socket.id} joined room: ${roomId}`);
 
-    // Store the user in the room
-    users[roomId].push({ id: socket.id, username: trimmedUsername });
+    // Store the user in the room (include UID)
+    users[roomId].push({ id: socket.id, username: trimmedUsername, uid: socket.user.uid });
 
     // Notify others that a user joined
     socket.to(roomId).emit("receive_message", {
@@ -101,16 +121,17 @@ io.on("connection", (socket) => {
       return;
     }
 
+
     // create room and make this socket the admin
-  rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id };
-  users[roomId] = [];
+    rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id, adminUid: socket.user.uid };
+    users[roomId] = [];
 
-  // assign a username for the creator (use provided or fallback to short id)
-  const assignedUsername = trimmedUsername || `User-${socket.id.slice(-4)}`;
-  users[roomId].push({ id: socket.id, username: assignedUsername });
-  socket.join(roomId);
+    // assign a username for the creator (use provided or fallback to short id)
+    const assignedUsername = trimmedUsername || `User-${socket.id.slice(-4)}`;
+    users[roomId].push({ id: socket.id, username: assignedUsername, uid: socket.user.uid });
+    socket.join(roomId);
 
-  socket.emit("room_created", { room: roomId, title: rooms[roomId].title, username: assignedUsername });
+    socket.emit("room_created", { room: roomId, title: rooms[roomId].title, username: assignedUsername });
 
     // send updated user list (creator only so far)
     const annotatedUsers = users[roomId].map((u) => ({
@@ -196,7 +217,7 @@ io.on("connection", (socket) => {
         users[roomIdNum].splice(userIndex, 1);
 
         // Ensure the socket leaves the room on server
-        try { socket.leave(roomIdNum); } catch (e) {}
+        try { socket.leave(roomIdNum); } catch (e) { }
 
         // Notify the room that the user has left
         io.to(roomIdNum).emit("receive_message", {
@@ -237,7 +258,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     let userRoom = null;
     let username = null;
-    
+
     // Find the user's room and username
     for (const room in users) {
       const userIndex = users[room].findIndex((user) => user.id === socket.id);
@@ -248,7 +269,7 @@ io.on("connection", (socket) => {
         break;
       }
     }
-  
+
     if (userRoom && username) {
       // Notify the room that the user has left
       io.to(userRoom).emit("receive_message", {
@@ -282,7 +303,7 @@ io.on("connection", (socket) => {
         io.to(userRoom).emit("update_user_list", annotated);
       }
     }
-  
+
     console.log("User Disconnected", socket.id);
   });
 

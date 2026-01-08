@@ -14,7 +14,7 @@ function Chat({ socket, username, room, onLeave }) {
         message: currentMessage,
         time: new Date().getHours() + ":" + new Date().getMinutes(),
       };
-  await socket.emit("send_message", messageData);
+      await socket.emit("send_message", messageData);
       setCurrentMessage("");
     }
   };
@@ -30,14 +30,14 @@ function Chat({ socket, username, room, onLeave }) {
     });
 
     socket.on("kicked", (data) => {
-      if (data.room == room) {
+      if (data.room === room) { // Strict equality
         alert("You were removed from the room by the admin.");
         if (onLeave) onLeave();
       }
     });
 
     socket.on("room_ended", (data) => {
-      if (data.room == room) {
+      if (data.room === room) { // Strict equality
         alert("Room has been ended by the admin.");
         if (onLeave) onLeave();
       }
@@ -46,10 +46,10 @@ function Chat({ socket, username, room, onLeave }) {
     return () => {
       socket.off("receive_message");
       socket.off("update_user_list");
-  socket.off("kicked");
-  socket.off("room_ended");
+      socket.off("kicked");
+      socket.off("room_ended");
     };
-  }, [socket]);
+  }, [socket, room, onLeave]); // Added dependencies
 
   // Auto-scroll to bottom when a new message is added
   const messagesEndRef = useRef(null);
@@ -66,11 +66,11 @@ function Chat({ socket, username, room, onLeave }) {
         <h3>Users in Room</h3>
         <ul className="user-list">
           {userList.map((user, index) => (
-            <li key={index} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{user.username}{user.isAdmin ? ' (admin)' : ''}</span>
               {/* show admin controls if current user is admin and this is not the current user */}
               {userList.some(u => u.id === socket.id && u.isAdmin) && user.id !== socket.id && (
-                <span style={{display: 'flex', gap: 6}}>
+                <span style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => socket.emit('remove_user', { room, targetId: user.id })}>Remove</button>
                   <button onClick={() => socket.emit('make_admin', { room, targetId: user.id })}>Make Admin</button>
                 </span>
@@ -115,8 +115,8 @@ function Chat({ socket, username, room, onLeave }) {
                 </div>
               );
             })}
-              {/* dummy element to scroll into view */}
-              <div ref={messagesEndRef} />
+            {/* dummy element to scroll into view */}
+            <div ref={messagesEndRef} />
           </ScrollToBottom>
         </div>
         <div className="chat-footer">
