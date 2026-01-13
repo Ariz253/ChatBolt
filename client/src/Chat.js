@@ -24,20 +24,25 @@ function Chat({ socket, username, room, onLeave }) {
       setMessageList((list) => [...list, data]);
     });
 
+    // Listen for prior messages (history)
+    socket.on("load_messages", (messages) => {
+      setMessageList(messages);
+    });
+
     // Listen for user list updates
     socket.on("update_user_list", (users) => {
       setUserList(users);
     });
 
     socket.on("kicked", (data) => {
-      if (data.room === room) { // Strict equality
+      if (String(data.room) === String(room)) {
         alert("You were removed from the room by the admin.");
         if (onLeave) onLeave();
       }
     });
 
     socket.on("room_ended", (data) => {
-      if (data.room === room) { // Strict equality
+      if (String(data.room) === String(room)) {
         alert("Room has been ended by the admin.");
         if (onLeave) onLeave();
       }
@@ -45,6 +50,7 @@ function Chat({ socket, username, room, onLeave }) {
 
     return () => {
       socket.off("receive_message");
+      socket.off("load_messages");
       socket.off("update_user_list");
       socket.off("kicked");
       socket.off("room_ended");
