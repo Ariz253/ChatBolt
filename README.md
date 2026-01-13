@@ -83,7 +83,8 @@ This project is licensed under the ISC License.
 
 ## Code Documentation
 
-[https://deepwiki.com/Ariz253/ChatBolt](https://deepwiki.com/Ariz253/ChatBolt)
+<!-- [https://deepwiki.com/Ariz253/ChatBolt](https://deepwiki.com/Ariz253/ChatBolt) -->
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Ariz253/ChatBolt)
 
 ---
 
