@@ -12,11 +12,16 @@ function Chat({ socket, username, room, onLeave }) {
         room: room,
         author: username,
         message: currentMessage,
-        time: new Date().getHours() + ":" + new Date().getMinutes(),
+        time: new Date().toISOString(),
       };
       await socket.emit("send_message", messageData);
       setCurrentMessage("");
     }
+  };
+
+  const leaveRoom = () => {
+    socket.emit("leave_room", { room, username });
+    if (onLeave) onLeave();
   };
 
   useEffect(() => {
@@ -67,6 +72,18 @@ function Chat({ socket, username, room, onLeave }) {
 
   return (
     <div className="chat-container">
+      {/* Room Controls (Top Right) */}
+      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', zIndex: 100 }}>
+        <button className="logout-button" onClick={leaveRoom} style={{ position: 'static' }}>Leave Room</button>
+        {userList.some(u => u.id === socket.id && u.isAdmin) && (
+          <button className="end-room-button" onClick={() => {
+            if (window.confirm('End room for everyone?')) {
+              socket.emit('end_room', { room });
+            }
+          }} style={{ position: 'static', transform: 'none' }}>End Room</button>
+        )}
+      </div>
+
       {/* Sidebar for Users */}
       <div className="sidebar">
         <h3>Users in Room</h3>
@@ -90,19 +107,20 @@ function Chat({ socket, username, room, onLeave }) {
       <div className="chat-window">
         <div className="chat-header">
           <p>Live Chat</p>
-          {/* End Room button visible to admin */}
-          {userList.some(u => u.id === socket.id && u.isAdmin) && (
-            <button className="end-room-button" onClick={() => {
-              if (window.confirm('End room for everyone?')) {
-                socket.emit('end_room', { room });
-              }
-            }}>End Room</button>
-          )}
         </div>
         <div className="chat-body">
           <ScrollToBottom className="message-container">
             {messageList.map((messageContent, index) => {
               const isSystemMessage = messageContent.author === "System"; // Check if it's a system message
+
+              // Handle Time Formatting
+              let displayTime = messageContent.time;
+              if (messageContent.time && messageContent.time.includes("T")) {
+                try {
+                  displayTime = new Date(messageContent.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } catch (e) { }
+              }
+
               return (
                 <div
                   className={`message ${isSystemMessage ? "system-message" : ""}`}
@@ -114,7 +132,7 @@ function Chat({ socket, username, room, onLeave }) {
                       <p style={{ whiteSpace: "pre-line" }}>{messageContent.message}</p>
                     </div>
                     <div className="message-meta">
-                      <p id="time">{messageContent.time}</p>
+                      <p id="time">{displayTime}</p>
                       {!isSystemMessage && <p id="author">{messageContent.author}</p>}
                     </div>
                   </div>

@@ -114,12 +114,7 @@ function App() {
     socket.emit("create_room", { room: roomNum, title: createTitle, username: createUsername });
   };
 
-  const leaveRoom = () => {
-    socket.emit("leave_room", { room, username });
-    setShowChat(false);
-    setRoom("");
-    // We don't clear username/user because they are still logged in
-  }
+
 
   const handleLogout = () => {
     signOut(auth);
@@ -157,7 +152,6 @@ function App() {
         </div>
       ) : (
         <div>
-          <button onClick={leaveRoom} className="logout-button">Leave Room</button>
           <Chat socket={socket} username={username} room={room} onLeave={() => { setShowChat(false); setRoom(''); }} />
         </div>
       )}
