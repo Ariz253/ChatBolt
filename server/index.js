@@ -102,6 +102,12 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Check password
+    if (data.password !== rooms[roomId].password) {
+      socket.emit("join_error", { message: "Incorrect password." });
+      return;
+    }
+
     // Allow user to use the name they sent, but we trust the UID from the token
     const trimmedUsername = data.username.trim();
     const normalizedUsername = trimmedUsername.toLowerCase();
@@ -115,7 +121,6 @@ io.on("connection", (socket) => {
 
     if (users[roomId].length >= 25) {
       socket.emit("join_error", { message: "Room is full (max 25 participants)." });
-      // socket.emit("join_error", { message: "Room is full (max 100 participants)." }); // Removed duplicate/conflicting line
       return;
     }
 
@@ -129,7 +134,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("receive_message", {
       author: "System",
       message: `${trimmedUsername} has joined the chat.`,
-      time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
+      time: new Date(Date.now()).toISOString(),
     });
 
     // Send the updated user list to all clients in the room (include isAdmin flag)
@@ -150,10 +155,16 @@ io.on("connection", (socket) => {
   // Create room handler
   socket.on("create_room", async (data) => {
     const roomId = parseInt(data.room, 10);
-    const title = (data.title || "").toString().trim();
+    const password = (data.password || "").toString().trim();
     const trimmedUsername = (data.username || "").toString().trim();
+
     if (Number.isNaN(roomId) || roomId < 1 || roomId > 50) {
       socket.emit("create_error", { message: "Invalid room. Room must be an integer between 1 and 50." });
+      return;
+    }
+
+    if (!password) {
+      socket.emit("create_error", { message: "Password is required to create a room." });
       return;
     }
 
@@ -170,7 +181,7 @@ io.on("connection", (socket) => {
 
 
     // create room and make this socket the admin
-    rooms[roomId] = { title: title || `Room ${roomId}`, adminId: socket.id, adminUid: socket.user.uid };
+    rooms[roomId] = { password, adminId: socket.id, adminUid: socket.user.uid };
     users[roomId] = [];
 
     // assign a username for the creator (use provided or fallback to short id)
@@ -178,7 +189,7 @@ io.on("connection", (socket) => {
     users[roomId].push({ id: socket.id, username: assignedUsername, uid: socket.user.uid });
     socket.join(roomId);
 
-    socket.emit("room_created", { room: roomId, title: rooms[roomId].title, username: assignedUsername });
+    socket.emit("room_created", { room: roomId, username: assignedUsername });
 
     // send updated user list (creator only so far)
     const annotatedUsers = users[roomId].map((u) => ({
@@ -187,7 +198,7 @@ io.on("connection", (socket) => {
       isAdmin: rooms[roomId].adminId === u.id,
     }));
     io.to(roomId).emit("update_user_list", annotatedUsers);
-    
+
     // --- LOAD HISTORY (Revival) ---
     // Even if created new, check if there's leftover history (though logic below deletes it on empty,
     // race conditions or manual server restart might leave it. Best to show it if it exists.)

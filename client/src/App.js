@@ -19,9 +19,10 @@ function App() {
   const [joinUsername, setJoinUsername] = useState("");
   const [createUsername, setCreateUsername] = useState("");
   const [room, setRoom] = useState("");
+  const [password, setPassword] = useState(""); //for the Join form
   const [showChat, setShowChat] = useState(false);
   const [createRoomId, setCreateRoomId] = useState("");
-  const [createTitle, setCreateTitle] = useState("");
+  const [createPassword, setCreatePassword] = useState(""); //for create room form
 
   // Listen for Auth Changes
   useEffect(() => {
@@ -94,7 +95,9 @@ function App() {
       return;
     }
 
-    socket.emit("join_room", { room: room.trim(), username: joinUsername }); // Use editable username
+    if (!password) { alert("Please enter a password."); return; }
+
+    socket.emit("join_room", { room: room.trim(), username: joinUsername, password }); // Use editable username
 
     socket.once("update_user_list", () => {
       setShowChat(true);
@@ -111,7 +114,9 @@ function App() {
       return;
     }
 
-    socket.emit("create_room", { room: roomNum, title: createTitle, username: createUsername });
+    if (!createPassword) { alert("Please enter a password."); return; }
+
+    socket.emit("create_room", { room: roomNum, password: createPassword, username: createUsername });
   };
 
 
@@ -135,6 +140,7 @@ function App() {
             <h3 className="panel-title">Join Room</h3>
             <input type="text" placeholder="Username" value={joinUsername} onChange={(e) => { setJoinUsername(e.target.value); }} />
             <input type="text" placeholder="Room (1-50)" value={room} onChange={(e) => { setRoom(e.target.value); }} />
+            <input type="password" placeholder="Password" value={password} onChange={(e) => { setPassword(e.target.value); }} />
             <button className="primary" onClick={joinRoom}>Join a Room</button>
           </div>
 
@@ -146,7 +152,7 @@ function App() {
             <h3 className="panel-title">Create Room</h3>
             <input type="text" placeholder="Username" value={createUsername} onChange={(e) => { setCreateUsername(e.target.value); }} />
             <input type="text" placeholder="Room ID (1-50)" value={createRoomId} onChange={(e) => setCreateRoomId(e.target.value)} />
-            <input type="text" placeholder="Title (optional)" value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} />
+            <input type="password" placeholder="Password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
             <button className="primary" onClick={createRoom}>Create Room</button>
           </div>
         </div>
