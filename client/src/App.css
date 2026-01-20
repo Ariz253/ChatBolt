@@ -1,5 +1,6 @@
 /* General Styling */
-body,html {
+body,
+html {
   margin: 0;
   padding: 0;
   font-family: "Poppins", sans-serif;
@@ -15,15 +16,17 @@ body,html {
   background: white;
   padding: 32px 28px;
   border-radius: 12px;
-  box-shadow: 0px 6px 20px rgba(0,0,0,0.15);
+  box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.15);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   gap: 20px;
-  width: 760px; /* fixed card width to match design */
+  width: 760px;
+  /* fixed card width to match design */
 }
 
-.landing-left, .landing-right {
+.landing-left,
+.landing-right {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -49,7 +52,8 @@ body,html {
   margin: 0 0 8px 0;
 }
 
-.landing-left input, .landing-right input {
+.landing-left input,
+.landing-right input {
   height: 48px;
   border: 2px solid #43a047;
   border-radius: 12px;
@@ -68,13 +72,17 @@ body,html {
   margin-top: 6px;
 }
 
-.primary:hover { background: #2e7d32 }
+.primary:hover {
+  background: #2e7d32
+}
 
 /* Chat Container */
 .chat-container {
   display: flex;
-  height: 90vh; /* use more of the viewport height */
-  width: 76vw; /* slightly wider container for more space */
+  height: 90vh;
+  /* use more of the viewport height */
+  width: 76vw;
+  /* slightly wider container for more space */
   background: white;
   border-radius: 12px;
   box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
@@ -83,14 +91,16 @@ body,html {
 
 /* Sidebar */
 .sidebar {
-  width: 20%; /* slimmer sidebar to enlarge chat area */
+  width: 30%;
+  /* widened sidebar to fit names/buttons */
   background: #263238;
   color: white;
   padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden; /* ensure internal scrolling handles overflow */
+  overflow: hidden;
+  /* ensure internal scrolling handles overflow */
 }
 
 .sidebar h3 {
@@ -102,12 +112,15 @@ body,html {
   list-style: none;
   padding: 0;
   width: 100%;
-  overflow-y: auto; /* make list scrollable when many users */
-  max-height: calc(80vh - 120px); /* keep list within sidebar (account for header/padding) */
+  overflow-y: auto;
+  /* make list scrollable when many users */
+  max-height: calc(80vh - 120px);
+  /* keep list within sidebar (account for header/padding) */
 }
 
 .user-list li {
-  padding: 8px 12px; /* reduce vertical padding to fit more users */
+  padding: 8px 12px;
+  /* reduce vertical padding to fit more users */
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   display: flex;
@@ -118,7 +131,7 @@ body,html {
 }
 
 .user-list li button {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   color: white;
   border: none;
   padding: 6px 8px;
@@ -134,23 +147,26 @@ body,html {
 
 /* Chat Window */
 .chat-window {
-  width: 80%; /* increase chat window width */
+  width: 80%;
+  /* adjusted for wider sidebar */
   display: flex;
   flex-direction: column;
 }
 
 .chat-header {
   background: #43a047;
-  padding: 10px 15px; /* slightly smaller header */
+  padding: 10px 15px;
+  /* slightly smaller header */
   text-align: center;
   font-size: 20px;
   color: white;
 }
 
-.chat-header .end-room-button {
+.end-room-button {
   position: absolute;
   left: 50%;
-  transform: translateX(380px); /* place near right top */
+  transform: translateX(380px);
+  /* place near right top */
   top: 12px;
   background: #c62828;
   border: none;
@@ -160,7 +176,9 @@ body,html {
   cursor: pointer;
 }
 
-.chat-header .end-room-button:hover { background: #b71c1c }
+.end-room-button:hover {
+  background: #b71c1c
+}
 
 .chat-body {
   flex: 1;
@@ -179,8 +197,10 @@ body,html {
 }
 
 .message {
-  max-width: 80%; /* allow messages to be wider inside the larger chat area */
-  padding: 8px 12px; /* reduced but comfortable padding to lower box height */
+  max-width: 80%;
+  /* allow messages to be wider inside the larger chat area */
+  padding: 8px 12px;
+  /* reduced but comfortable padding to lower box height */
   min-height: 0;
   border-radius: 12px;
   font-size: 14px;
@@ -190,8 +210,10 @@ body,html {
 
 #you {
   align-self: flex-end;
-  background: #2e7d32; /* dark green bubble */
-  color: #ffffff; /* white text for high contrast */
+  background: #2e7d32;
+  /* dark green bubble */
+  color: #ffffff;
+  /* white text for high contrast */
   border-bottom-right-radius: 10px;
   text-align: right;
   margin-left: auto;
@@ -209,7 +231,8 @@ body,html {
 .message-content {
   font-size: 14px;
   font-weight: 500;
-  margin: 0; /* remove default paragraph margins so boxes stay compact */
+  margin: 0;
+  /* remove default paragraph margins so boxes stay compact */
 }
 
 .message-meta {
@@ -217,14 +240,17 @@ body,html {
   justify-content: space-between;
   align-items: center;
   font-size: 11px;
-  color: #6b6b6b; /* readable neutral gray for received messages */
+  color: #6b6b6b;
+  /* readable neutral gray for received messages */
   margin-top: 6px;
   gap: 8px;
   line-height: 1;
 }
 
-.message-content, .message-meta {
-  line-height: 1; /* Reduce spacing between lines */
+.message-content,
+.message-meta {
+  line-height: 1;
+  /* Reduce spacing between lines */
 }
 
 /* Ensure paragraph inside message content doesn't add extra spacing */
@@ -236,7 +262,8 @@ body,html {
 #you .message-meta,
 #you .message-meta #time,
 #you .message-meta #author {
-  color: rgba(255,255,255,0.9); /* readable white-ish metadata on dark bubble */
+  color: rgba(255, 255, 255, 0.9);
+  /* readable white-ish metadata on dark bubble */
 }
 
 /* Metadata contrast for other users (darker text on light background) */
@@ -249,21 +276,24 @@ body,html {
 /* System Message Styling */
 .system-message {
   align-self: center;
-  background: #ffeb3b; /* Yellow background for system messages */
+  background: #ffeb3b;
+  /* Yellow background for system messages */
   color: black;
   font-weight: bold;
   border-radius: 8px;
   padding: 8px 12px;
   text-align: center;
   max-width: 60%;
-  margin: 5px auto; /* Center the message */
+  margin: 5px auto;
+  /* Center the message */
 }
 
 /* Chat Footer */
 .chat-footer {
   display: flex;
   align-items: center;
-  padding: 6px 10px; /* smaller footer to reclaim vertical space */
+  padding: 6px 10px;
+  /* smaller footer to reclaim vertical space */
   background: #fff;
   border-top: 1px solid #eee;
 }
@@ -287,7 +317,7 @@ body,html {
 }
 
 /* Style the send button to match previous look */
-.chat-footer button {
+.chat-footer .send-btn {
   background: #4caf50;
   color: #fff;
   border: none;
@@ -301,8 +331,26 @@ body,html {
   justify-content: center;
 }
 
-.chat-footer button:hover {
+.chat-footer .send-btn:hover {
   background: #388e3c;
+}
+
+.upload-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  margin-right: 10px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+  color: #555;
+}
+
+.upload-btn:hover {
+  transform: scale(1.1);
+  color: #388e3c;
 }
 
 /* Logout Button */
@@ -310,7 +358,8 @@ body,html {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: black; /* Revert to previous color */
+  background: black;
+  /* Revert to previous color */
   color: white;
   border: none;
   border-radius: 8px;
@@ -321,7 +370,8 @@ body,html {
 }
 
 .logout-button:hover {
-  background: gray; /* Revert to previous hover color */
+  background: gray;
+  /* Revert to previous hover color */
 }
 
 /* Responsive Design */

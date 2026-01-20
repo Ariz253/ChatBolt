@@ -289,6 +289,7 @@ io.on("connection", (socket) => {
           room: roomId,
           author: data.author,
           message: data.message,
+          type: data.type || "text",
           time: data.time,
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });

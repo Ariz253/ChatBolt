@@ -158,7 +158,12 @@ function App() {
         </div>
       ) : (
         <div>
-          <Chat socket={socket} username={username} room={room} onLeave={() => { setShowChat(false); setRoom(''); }} />
+          <Chat socket={socket} username={username} room={room} onLeave={() => {
+            setShowChat(false);
+            setRoom('');
+            setPassword('');
+            setCreatePassword('');
+          }} />
         </div>
       )}
     </div>

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
+import { uploadToCloudinary } from "./cloudinary";
 
 function Chat({ socket, username, room, onLeave }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   const [userList, setUserList] = useState([]); // Store connected users
+
+  const fileInputRef = useRef(null);
 
   const sendMessage = async () => {
     if (currentMessage !== "") {
@@ -12,10 +15,31 @@ function Chat({ socket, username, room, onLeave }) {
         room: room,
         author: username,
         message: currentMessage,
+        type: "text",
         time: new Date().toISOString(),
       };
       await socket.emit("send_message", messageData);
       setCurrentMessage("");
+    }
+  };
+
+  const uploadImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const secureUrl = await uploadToCloudinary(file);
+
+      const messageData = {
+        room: room,
+        author: username,
+        message: secureUrl, // Send the URL as the message content
+        type: "image",
+        time: new Date().toISOString(),
+      };
+      await socket.emit("send_message", messageData);
+    } catch (error) {
+      alert("Failed to upload image.");
     }
   };
 
@@ -129,7 +153,11 @@ function Chat({ socket, username, room, onLeave }) {
                 >
                   <div>
                     <div className="message-content">
-                      <p style={{ whiteSpace: "pre-line" }}>{messageContent.message}</p>
+                      {messageContent.type === "image" ? (
+                        <img src={messageContent.message} alt="Shared" style={{ maxWidth: "200px", borderRadius: "8px", cursor: "pointer" }} onClick={() => window.open(messageContent.message, "_blank")} />
+                      ) : (
+                        <p style={{ whiteSpace: "pre-line" }}>{messageContent.message}</p>
+                      )}
                     </div>
                     <div className="message-meta">
                       <p id="time">{displayTime}</p>
@@ -144,6 +172,14 @@ function Chat({ socket, username, room, onLeave }) {
           </ScrollToBottom>
         </div>
         <div className="chat-footer">
+          <input
+            type="file"
+            style={{ display: "none" }}
+            ref={fileInputRef}
+            onChange={uploadImage}
+            accept="image/*"
+          />
+          <button onClick={() => fileInputRef.current.click()} className="upload-btn">📎</button>
           <textarea
             value={currentMessage}
             placeholder="Hey..."
@@ -157,7 +193,7 @@ function Chat({ socket, username, room, onLeave }) {
               // Shift+Enter will insert a new line by default
             }}
           />
-          <button onClick={sendMessage}>&#9658;</button>
+          <button onClick={sendMessage} className="send-btn">&#9658;</button>
         </div>
       </div>
     </div>
