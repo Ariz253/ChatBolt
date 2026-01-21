@@ -99,6 +99,9 @@ function App() {
 
     socket.emit("join_room", { room: room.trim(), username: joinUsername, password }); // Use editable username
 
+    // Fix: Update the main 'username' state so Chat.js uses the typed name
+    setUsername(joinUsername);
+
     socket.once("update_user_list", () => {
       setShowChat(true);
     });
@@ -117,6 +120,8 @@ function App() {
     if (!createPassword) { alert("Please enter a password."); return; }
 
     socket.emit("create_room", { room: roomNum, password: createPassword, username: createUsername });
+    // Sync the password so Chat component uses it as secretKey
+    setPassword(createPassword);
   };
 
 
@@ -158,12 +163,17 @@ function App() {
         </div>
       ) : (
         <div>
-          <Chat socket={socket} username={username} room={room} onLeave={() => {
-            setShowChat(false);
-            setRoom('');
-            setPassword('');
-            setCreatePassword('');
-          }} />
+          <Chat
+            socket={socket}
+            username={username}
+            room={room}
+            secretKey={password}
+            onLeave={() => {
+              setShowChat(false);
+              setRoom('');
+              setPassword('');
+              setCreatePassword('');
+            }} />
         </div>
       )}
     </div>

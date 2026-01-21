@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import { uploadToCloudinary } from "./cloudinary";
+import { encryptMessage, decryptMessage } from "./encryption";
 
-function Chat({ socket, username, room, onLeave }) {
+function Chat({ socket, username, room, secretKey, onLeave }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   const [userList, setUserList] = useState([]); // Store connected users
@@ -14,7 +15,7 @@ function Chat({ socket, username, room, onLeave }) {
       const messageData = {
         room: room,
         author: username,
-        message: currentMessage,
+        message: encryptMessage(currentMessage, secretKey),
         type: "text",
         time: new Date().toISOString(),
       };
@@ -33,7 +34,7 @@ function Chat({ socket, username, room, onLeave }) {
       const messageData = {
         room: room,
         author: username,
-        message: secureUrl, // Send the URL as the message content
+        message: encryptMessage(secureUrl, secretKey), // Encrypt the URL
         type: "image",
         time: new Date().toISOString(),
       };
@@ -134,34 +135,40 @@ function Chat({ socket, username, room, onLeave }) {
         </div>
         <div className="chat-body">
           <ScrollToBottom className="message-container">
-            {messageList.map((messageContent, index) => {
-              const isSystemMessage = messageContent.author === "System"; // Check if it's a system message
+            {messageList.map((msg, index) => {
+              const isSystemMessage = msg.author === "System";
+
+              // Decrypt content for display
+              let displayedMessage = msg.message;
+              if (!isSystemMessage && msg.message) {
+                displayedMessage = decryptMessage(msg.message, secretKey);
+              }
 
               // Handle Time Formatting
-              let displayTime = messageContent.time;
-              if (messageContent.time && messageContent.time.includes("T")) {
+              let displayTime = msg.time;
+              if (msg.time && msg.time.includes("T")) {
                 try {
-                  displayTime = new Date(messageContent.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  displayTime = new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 } catch (e) { }
               }
 
               return (
                 <div
                   className={`message ${isSystemMessage ? "system-message" : ""}`}
-                  id={!isSystemMessage ? (username === messageContent.author ? "you" : "other") : ""}
+                  id={!isSystemMessage ? (username === msg.author ? "you" : "other") : ""}
                   key={index}
                 >
                   <div>
                     <div className="message-content">
-                      {messageContent.type === "image" ? (
-                        <img src={messageContent.message} alt="Shared" style={{ maxWidth: "200px", borderRadius: "8px", cursor: "pointer" }} onClick={() => window.open(messageContent.message, "_blank")} />
+                      {msg.type === "image" ? (
+                        <img src={displayedMessage} alt="Shared" style={{ maxWidth: "200px", borderRadius: "8px", cursor: "pointer" }} onClick={() => window.open(displayedMessage, "_blank")} />
                       ) : (
-                        <p style={{ whiteSpace: "pre-line" }}>{messageContent.message}</p>
+                        <p style={{ whiteSpace: "pre-line" }}>{displayedMessage}</p>
                       )}
                     </div>
                     <div className="message-meta">
                       <p id="time">{displayTime}</p>
-                      {!isSystemMessage && <p id="author">{messageContent.author}</p>}
+                      {!isSystemMessage && <p id="author">{msg.author}</p>}
                     </div>
                   </div>
                 </div>
